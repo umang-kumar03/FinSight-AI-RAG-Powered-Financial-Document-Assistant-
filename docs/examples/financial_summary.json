@@ -1,0 +1,9 @@
+{
+  "periods": 3,
+  "total_revenue": 3700.0,
+  "total_expenses": 2500.0,
+  "total_net_income": 1200.0,
+  "aggregate_profit_margin": 0.32432432432432434,
+  "net_income_method": "Uploaded net_income when provided; otherwise revenue minus expenses.",
+  "assumptions": "Common currency; distinct, non-overlapping reporting periods. Balance-sheet ratios use period-end values, not averages. Undefined ratios and growth are blank, not zero."
+}

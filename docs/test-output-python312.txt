@@ -1,0 +1,21 @@
+..............................s.....................................     [100%]
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.12.14-final-0 _______________
+
+Name                Stmts   Miss  Cover   Missing
+-------------------------------------------------
+src/__init__.py         0      0   100%
+src/config.py          16      0   100%
+src/documents.py      117     16    86%   70, 78-79, 89-90, 98, 108-111, 136, 141-145
+src/embeddings.py      63      0   100%
+src/errors.py           2      0   100%
+src/evaluation.py      14      0   100%
+src/finance.py         85      4    95%   25, 34, 46, 96
+src/portfolio.py      110     12    89%   35, 53, 58, 65-69, 71, 104, 108, 136
+src/rag.py            117      4    97%   119, 138-139, 155
+-------------------------------------------------
+TOTAL                 524     36    93%
+Coverage JSON written to file docs/coverage-python312.json
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_live_gemini.py:14: Real Gemini credentials and RUN_LIVE_GEMINI=1 required
+67 passed, 1 skipped in 26.78s

@@ -1,0 +1,14 @@
+{
+  "text": "Retrieved excerpts (offline mode; not a generated answer):\n\n[S1] Fictional Example Company — Annual Report\nSynthetic teaching data, not a real company or investment recommendation.\nRevenue increased to 1500 in 2025. Net income was 500. Expenses were 1000. All amounts are\nfictional currency units.\nYear\nRevenue\nExpenses\nNet income\n2023\n1000\n700\n300\n2024\n1200\n800\n400\n2025\n1500\n1000\n500",
+  "sources": [
+    {
+      "id": "b23aec26088cbcbf0e79a6c74ea18807c31aac625d7b1916fed482c621c94998",
+      "document_id": "7108472205be9dfd0676523d1300142ffe24bb673cfb5b4c4421191b85c51166",
+      "source": "annual_report.pdf",
+      "page": 1,
+      "text": "Fictional Example Company — Annual Report\nSynthetic teaching data, not a real company or investment recommendation.\nRevenue increased to 1500 in 2025. Net income was 500. Expenses were 1000. All amounts are\nfictional currency units.\nYear\nRevenue\nExpenses\nNet income\n2023\n1000\n700\n300\n2024\n1200\n800\n400\n2025\n1500\n1000\n500",
+      "score": 0.36732392311096196
+    }
+  ],
+  "mode": "offline"
+}

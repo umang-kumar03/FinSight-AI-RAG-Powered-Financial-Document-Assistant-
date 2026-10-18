@@ -1,0 +1,1 @@
+PASS: actual browser uploads of two PDFs, offline chat with revenue citation, XLSX financial analysis, and CSV portfolio optimization.

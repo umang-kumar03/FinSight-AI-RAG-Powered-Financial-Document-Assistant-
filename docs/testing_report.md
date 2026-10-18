@@ -18,6 +18,8 @@ these environments. The Python 3.12 coverage run executed **488 of 524 source
 statements (93.13%)** in `src/`. Coverage is execution evidence, not proof of
 correctness or a model accuracy metric. The Streamlit entrypoint is exercised by
 four actual AppTest workflow tests; it is outside the `--cov=src` denominator.
+A [final host UI rerun](test-output-ui-final.txt) also passed all four tests after
+adding the displayed covariance/risk tables.
 
 Executed commands included:
 
@@ -128,3 +130,17 @@ The environment draft now contains updated install/start instructions and a
 Saving the draft did not inject a key, publish the environment, merge, or deploy.
 Review/save secure configuration in environment settings; publication remains a
 separate action requiring the user's approval.
+
+## GitHub delivery outcome
+
+Implementation commits were pushed successfully on `feat/complete-finsight-ai`.
+PR creation was attempted with both `gh pr create` (GraphQL) and GitHub's REST
+pull-request endpoint. Both returned **Forbidden**. Git push access works;
+GitHub API access is not authorized in this environment. No PR was created or
+merged, and no repository credentials were extracted or replaced.
+
+The complete [prepared PR description](pull_request.md) includes features,
+validation, screenshot links, setup and limitations. Open the comparison below
+to review the pushed branch and create the PR using an account with access:
+
+https://github.com/umang-kumar03/FinSight-AI-RAG-Powered-Financial-Document-Assistant-/compare/main...feat/complete-finsight-ai?expand=1

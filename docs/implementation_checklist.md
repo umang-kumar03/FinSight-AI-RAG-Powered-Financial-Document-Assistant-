@@ -25,7 +25,7 @@ external check is not satisfied by a mock or by configuration alone.
 ## External acceptance still pending
 
 - [ ] Real Gemini semantic embedding and generated-answer test with a securely configured key.
-- [ ] Hosted CI outcome and successful PR creation (API permission dependent).
+- [ ] Hosted CI outcome and successful PR creation: branch pushed, both GitHub API PR calls returned Forbidden.
 - [ ] Any actual cloud deployment, load/security review, or environment publication (not performed; deployment/publication require approval).
 
 Implementation checkboxes indicate delivered code and local validation where

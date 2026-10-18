@@ -108,3 +108,41 @@ provider test without explicit opt-in; mocks are not proof of provider access.
 OCR tests skip if the optional package/executable is unavailable. CI runs both
 Python versions, produces test/coverage artifacts and offline examples, and builds
 and health-checks Docker. No workflow deploys or merges automatically.
+
+## Exact Windows PowerShell / VS Code commands
+
+Prerequisites: install Git, VS Code, and 64-bit Python 3.11 from their official
+installers. These commands use the virtual environment's interpreter directly,
+so PowerShell activation/execution-policy changes are unnecessary. Run from the
+folder where you want the checkout (do not clone over existing local work):
+
+```powershell
+git clone --branch feat/complete-finsight-ai https://github.com/umang-kumar03/FinSight-AI-RAG-Powered-Financial-Document-Assistant-.git FinSight-AI
+cd FinSight-AI
+code .
+py -3.11 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip check
+.\.venv\Scripts\python.exe -m pytest -q
+if (!(Test-Path .env)) { Copy-Item .env.example .env }
+notepad .env
+```
+
+Enter your key only in that local editor as `GOOGLE_API_KEY=...`, save and close.
+The ignored `.env` is local secret storage; never share or commit it. Continue:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\verify_live.py
+$env:RUN_LIVE_GEMINI = "1"
+.\.venv\Scripts\python.exe -m pytest -q -m live
+Remove-Item Env:RUN_LIVE_GEMINI
+.\.venv\Scripts\python.exe -m streamlit run app.py
+```
+
+Open the address printed by Streamlit in your own local browser. Select the
+`.venv` interpreter in VS Code. In Settings select Gemini semantic, upload/index
+PDFs in Document Library, then choose Gemini answer in PDF Chat Assistant.
+If you already have a clone, use `git fetch origin` and
+`git switch feat/complete-finsight-ai` in its root, preserving local changes.
+The project tests were executed on Linux; these Windows commands are provided
+for setup and have not been executed on a Windows machine in this environment.

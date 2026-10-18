@@ -59,7 +59,10 @@ def test_pdf_chat_ui_and_delete():
 
 
 def test_missing_gemini_key_is_safe(monkeypatch):
-    monkeypatch.delenv('GOOGLE_API_KEY', raising=False)
+    from src.config import Settings
+    # Isolate this negative test from real .env files and Streamlit secret bindings.
+    monkeypatch.setattr('src.config.Settings.from_env', lambda: Settings())
+    monkeypatch.setattr('streamlit.secrets', {})
     app = AppTest.from_file(APP).run(timeout=45)
     button(app, 'Load sample documents').click().run(timeout=45)
     go(app, 'PDF Chat Assistant')

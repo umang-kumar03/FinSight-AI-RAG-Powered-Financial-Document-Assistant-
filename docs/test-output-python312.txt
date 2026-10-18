@@ -1,4 +1,4 @@
-..............................s.....................................     [100%]
+..............................ss.......................................  [100%]
 ================================ tests coverage ================================
 _______________ coverage: platform linux, python 3.12.14-final-0 _______________
 
@@ -18,4 +18,5 @@ TOTAL                 524     36    93%
 Coverage JSON written to file docs/coverage-python312.json
 =========================== short test summary info ============================
 SKIPPED [1] tests/test_live_gemini.py:14: Real Gemini credentials and RUN_LIVE_GEMINI=1 required
-67 passed, 1 skipped in 26.78s
+SKIPPED [1] tests/test_live_gemini.py:27: Real Gemini credentials and RUN_LIVE_GEMINI=1 required
+69 passed, 2 skipped in 19.38s

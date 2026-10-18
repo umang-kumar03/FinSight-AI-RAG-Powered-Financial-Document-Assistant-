@@ -9,12 +9,13 @@ The requested `mamta-kumari28` URL was not accessible (Git returned
 
 | Execution | Passed | Skipped | Failed/errors | Evidence |
 |---|---:|---:|---:|---|
-| Python 3.11.17, constrained dependencies, host Tesseract enabled | 67 | 1 live Gemini test | 0 | [Console](test-output-python311.txt), [JUnit](test-results-python311.xml) |
-| Python 3.12.14, same dependency constraints, host Tesseract enabled | 67 | 1 live Gemini test | 0 | [Console and coverage](test-output-python312.txt), [JUnit](test-results-python312.xml), [coverage JSON](coverage-python312.json) |
-| Python 3.11 Docker image, non-root appuser, standard requirements | 66 | 1 optional OCR test and 1 live Gemini test | 0 | [Console](test-output-docker.txt), [JUnit](test-results-docker.xml) |
+| Python 3.11.17, constrained dependencies, host Tesseract enabled | 69 | 2 live Gemini tests | 0 | [Console](test-output-python311.txt), [JUnit](test-results-python311.xml) |
+| Python 3.12.14, same dependency constraints, host Tesseract enabled | 69 | 2 live Gemini tests | 0 | [Console and coverage](test-output-python312.txt), [JUnit](test-results-python312.xml), [coverage JSON](coverage-python312.json) |
+| Python 3.11 Docker image, non-root appuser, standard requirements | 68 | 1 optional OCR test and 2 live Gemini tests | 0 | [Latest console](test-output-docker-latest.txt) |
 
-There are **68 collected tests**, not 200 distinct tests when repeated across
-these environments. The Python 3.12 coverage run executed **488 of 524 source
+There are **71 collected tests** in the latest suite; repetitions across environments
+are not additional distinct tests. The retained Docker JUnit/console files without
+`latest` in their names describe the earlier 68-test image run, not this latest run. The Python 3.12 coverage run executed **488 of 524 source
 statements (93.13%)** in `src/`. Coverage is execution evidence, not proof of
 correctness or a model accuracy metric. The Streamlit entrypoint is exercised by
 four actual AppTest workflow tests; it is outside the `--cov=src` denominator.
@@ -37,7 +38,7 @@ Separate Python 3.11 and 3.12 virtual environments were used. Optional
 `requirements-ocr.txt` was installed on the host; the real scanned-image PDF test
 rendered a page and verified recognized text contained `1500`. The standard
 Docker image intentionally omits the optional OCR adapter/executable, hence its
-additional skip.
+additional skip. Both live tests are skipped without an available key.
 
 ## What was exercised
 
@@ -144,3 +145,39 @@ validation, screenshot links, setup and limitations. Open the comparison below
 to review the pushed branch and create the PR using an account with access:
 
 https://github.com/umang-kumar03/FinSight-AI-RAG-Powered-Financial-Document-Assistant-/compare/main...feat/complete-finsight-ai?expand=1
+
+
+## Follow-up verification after credential configuration was reported saved
+
+The user reported saving `GOOGLE_API_KEY`. Presence-only checks before and after
+that message still returned **unset** in newly launched application processes.
+The environment draft metadata reported `has_saved_binding: false` for
+`GOOGLE_API_KEY` and no pending runtime requirement. The app also had no local
+`.env` or `.streamlit/secrets.toml`. No key or credential-file contents were
+printed or copied. This describes what this session could observe; it does not
+establish what may have been configured in another environment or editor.
+
+The new safe opt-in checker, `python scripts/verify_live.py`, recorded
+[live-validation.json](live-validation.json) and exited 2: connection and live
+semantic RAG were **not run**, because the required key was unavailable. No
+unauthenticated request was described as a successful API connection. Both full
+host suites were invoked with `RUN_LIVE_GEMINI=1`, but their two live tests still
+skipped due to absent credentials. The application cannot complete the live
+acceptance criterion until the saved key is actually injected into this process.
+
+Two regression tests verify the checker fails closed without a key and never
+includes provider exception payloads or keys in its result. The missing-key UI
+test now explicitly isolates `.env` and Streamlit secret configuration, preventing
+it from accidentally making real API calls on a developer machine with secrets.
+
+All seven pages were independently re-rendered without errors:
+[page-validation.json](page-validation.json). The XLSX statement totals were
+checked again (revenue 3700 and net income 1200); both portfolio objectives
+satisfied nonnegative weights summing to one, and the frontier contained 20 points:
+[sample-validation.json](sample-validation.json). The Docker image was rebuilt
+with the current test additions and its latest default suite passed as above.
+
+[Exact Windows PowerShell and VS Code commands](deployment.md#exact-windows-powershell--vs-code-commands)
+are now included. They use the virtual environment interpreter directly, avoiding
+PowerShell execution-policy changes. Windows execution remains unverified; the
+reported test runs took place on Linux.

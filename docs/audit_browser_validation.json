@@ -1,0 +1,14 @@
+{
+  "checks": {
+    "dashboard": "passed",
+    "actual_multi_pdf_upload": "passed",
+    "offline_pdf_chat": "passed",
+    "xlsx_financials_and_yoy_chart": "passed",
+    "csv_min_variance": "passed",
+    "max_sharpe": "passed",
+    "portfolio_json_download": "passed",
+    "settings": "passed",
+    "workspace_clear": "passed"
+  },
+  "live_gemini": "not_run"
+}

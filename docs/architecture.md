@@ -40,6 +40,7 @@ flowchart TD
 | `src/config.py` | Environment configuration; credential excluded from repr |
 | `src/documents.py` | PDF signature/size/page limits, cleaning, metadata-preserving chunking, raw tables, optional OCR |
 | `src/embeddings.py` | Local lexical hashing, Gemini adapter, normalized vectors, bounded retries and sanitized errors |
+| `src/workspace.py` | Own session paths/clients, explicit close before cleanup, best-effort finalizer |
 | `src/rag.py` | Content-addressed ingestion, deduplication, model-separated Chroma collections, search/filter/delete and cited answers |
 | `src/finance.py` | CSV/XLSX loading, schema validation, ratios, growth, safe exports |
 | `src/portfolio.py` | Price validation, moments, min variance, max Sharpe, efficient frontier |
@@ -66,7 +67,8 @@ A query retrieves up to three times the requested results, reranks using 80%
 cosine similarity and 20% token overlap, prefers distinct pages, and drops very
 low-scoring candidates. These heuristic weights are not tuned accuracy claims.
 Scores are not probabilities. History is bounded to 40 displayed messages; the
-last six messages go to Gemini. Retrieval uses the current question, so ambiguous
+last six messages go to Gemini. Changing the document scope clears the chat,
+so previous document excerpts are not forwarded into a new scope. Retrieval uses the current question, so ambiguous
 follow-ups should restate the subject. There is no automatic question rewriting.
 The prompt treats history/documents as untrusted data. Citation labels are checked
 for membership in the retrieved source list; this does **not** prove every model
@@ -84,7 +86,9 @@ standardization are outside scope. Rows sort chronologically when `period` exist
 - Debt/equity = debt / equity.
 - ROA and ROE = net income / period-end assets or equity (not average balances).
 - Interest coverage = operating income / interest expense.
-- Growth = (current - prior) / prior, only when the prior value is positive.
+- Period growth = (current - prior row) / prior row, only for a positive prior value.
+- YoY growth = (current - matching prior-year reporting date) / prior-year value;
+  absent/nonpositive prior-year values are undefined.
 
 Optional ratios appear only when their input columns exist. Missing or invalid
 numeric input is rejected. Undefined ratios are blank/NaN in CSV, not invented
@@ -116,8 +120,10 @@ The UI uses a per-session TemporaryDirectory and no global document cache.
 Uploaded PDFs stay in memory; extracted text persists locally for that session.
 Deleting a document deletes its indexed chunks and clears UI chat. “Clear this
 session workspace” deletes all its collections. Temporary storage is neither
-an encrypted vault nor durable cross-restart storage. Process/session cleanup
-is best effort; an operator still needs a retention policy.
+an encrypted vault nor durable cross-restart storage. The session owner closes all cached model-specific clients using Chroma’s public
+`close()` before directory cleanup. Finalization repeats that order and ignores
+external file-lock cleanup errors while recording a safe warning. This is best
+effort; an operator still needs a retention policy.
 
 API timeouts and bounded exponential retry handle selected transient failures;
 errors shown/logged do not include provider payloads or keys. Application logs

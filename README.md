@@ -253,6 +253,9 @@ Dockerfile                  Python 3.11 image and health check
 .github/workflows/ci.yml     Python 3.11/3.12 tests, reports and Docker smoke check
 ```
 
+See the [Windows workspace cleanup fix and verification commands](docs/windows_cleanup_fix.md)
+for Chroma 1.5.9 session-lock handling and platform test evidence.
+
 ## Documentation and deployment boundary
 
 - [Architecture and formulas](docs/architecture.md)

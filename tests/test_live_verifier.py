@@ -41,7 +41,7 @@ def test_opt_in_checks_configured_model_availability_before_answering(monkeypatc
                           invoke=lambda _: SimpleNamespace(content='OK'))
     monkeypatch.setattr('langchain_google_genai.ChatGoogleGenerativeAI', lambda **_: llm)
     class FakeService:
-        def __init__(self, *args): pass
+        def __init__(self, *args, **kwargs): pass
         def __enter__(self): return self
         def __exit__(self, *args): pass
         def ingest(self, *args): pass

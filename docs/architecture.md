@@ -116,13 +116,16 @@ slippage, walk-forward validation, and trading execution are not modeled.
 
 ## Privacy, reliability, and deployment boundary
 
-The UI uses a per-session TemporaryDirectory and no global document cache.
+The UI owns a per-session workspace. Windows temporary sessions use in-memory
+Chroma collections with unique session namespaces; Linux sessions use an owned
+TemporaryDirectory. Explicit RAGService paths remain persistent. There is no global
+document cache or global collection reset.
 Uploaded PDFs stay in memory; extracted text persists locally for that session.
 Deleting a document deletes its indexed chunks and clears UI chat. “Clear this
 session workspace” deletes all its collections. Temporary storage is neither
 an encrypted vault nor durable cross-restart storage. The session owner closes all cached model-specific clients using Chroma’s public
-`close()` before directory cleanup. Finalization repeats that order and ignores
-external file-lock cleanup errors while recording a safe warning. This is best
+`close()` before directory cleanup. Finalization repeats that order. Explicit close retries transient OS locks and
+returns False with a warning on persistent failure, retaining resources for retry. This is best
 effort; an operator still needs a retention policy.
 
 API timeouts and bounded exponential retry handle selected transient failures;

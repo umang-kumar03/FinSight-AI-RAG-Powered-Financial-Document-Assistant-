@@ -156,11 +156,12 @@ the application or load the checked-in samples. Deploy only after reviewing the
 local audit commits and explicitly approving publication. No deployment was
 performed during this audit.
 
-The session owner closes every Chroma client through the pinned version's public
-`close()` API before deleting its temporary directory. This fixes the lifecycle
-ordering that can trigger Windows SQLite locks. An external antivirus or another
-process can still retain a handle; cleanup reports that situation without an
-unhandled finalizer exception. This lifecycle was tested on Linux, not Windows.
+Windows temporary sessions now use isolated in-memory Chroma collections to avoid
+Chroma 1.5.9 native persistent-file shutdown locks. Other platforms retain owned
+temporary indexes; explicit persistent RAG indexes remain available. Cleanup closes
+clients first, retries transient OS locks, and reports persistent failure without
+losing the ability to retry. See [the Windows fix and actual verification status](windows_cleanup_fix.md).
+
 
 For an alternative chat model, set `GEMINI_MODEL=gemini-3.8-flash` in `.env` or
 the deployment environment. The name is configurable, not a promise that your

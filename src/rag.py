@@ -3,6 +3,7 @@ from dataclasses import asdict, dataclass
 from hashlib import sha256
 from pathlib import Path
 import re
+from uuid import uuid4
 
 import chromadb
 from chromadb.config import Settings as ChromaSettings
@@ -34,19 +35,38 @@ class Answer:
 
 
 class RAGService:
-    def __init__(self, path: str | Path, embeddings=None, settings=None):
+    def __init__(self, path: str | Path, embeddings=None, settings=None, *,
+                 persistent: bool = True, namespace: str | None = None):
         self.settings = settings or Settings()
         self.embeddings = embeddings or LocalEmbeddings()
-        self.client = chromadb.PersistentClient(
-            path=str(path), settings=ChromaSettings(anonymized_telemetry=False))
-        # Different embedding models must never share a vector space.
-        collection_name = 'finsight-' + sha256(self.embeddings.identity.encode()).hexdigest()[:20]
-        self.collection = self.client.get_or_create_collection(
-            collection_name, embedding_function=None, metadata={'hnsw:space': 'cosine'})
+        self.persistent = persistent
+        self._closed = False
+        self._collection_removed = False
+        config = ChromaSettings(anonymized_telemetry=False)
+        self.client = (chromadb.PersistentClient(path=str(path), settings=config) if persistent
+                       else chromadb.EphemeralClient(settings=config))
+        # Ephemeral clients share a process-wide engine. Each workspace owns a unique namespace.
+        prefix = '' if persistent else (namespace or uuid4().hex) + '-'
+        self.collection_name = 'finsight-' + prefix + sha256(self.embeddings.identity.encode()).hexdigest()[:20]
+        try:
+            self.collection = self.client.get_or_create_collection(
+                self.collection_name, embedding_function=None, metadata={'hnsw:space': 'cosine'})
+        except Exception:
+            self.client.close()
+            raise
 
     def close(self):
-        """Release Chroma's public client resources before removing index files."""
+        """Release only this service's collection/client; never reset a shared Chroma system."""
+        if self._closed:
+            return
+        if not self.persistent and not self._collection_removed:
+            self.client.delete_collection(self.collection_name)
+            self._collection_removed = True
+            self.collection = None
         self.client.close()
+        self.collection = None
+        self.client = None
+        self._closed = True
 
     def __enter__(self):
         return self

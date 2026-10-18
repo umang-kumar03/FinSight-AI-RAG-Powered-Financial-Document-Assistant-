@@ -181,3 +181,25 @@ with the current test additions and its latest default suite passed as above.
 are now included. They use the virtual environment interpreter directly, avoiding
 PowerShell execution-policy changes. Windows execution remains unverified; the
 reported test runs took place on Linux.
+
+### Follow-up GitHub/network diagnosis
+
+The new `gh pr create` attempt also failed with Forbidden. A read-only request
+to the public `https://api.github.com/` endpoint (without any API credential)
+failed at the proxy CONNECT tunnel with HTTP **403**. This confirms a network
+policy blocker before GitHub authentication; it does not establish whether the
+GitHub token would be valid after that blocker is removed.
+
+The current editable draft's custom domains contained only
+`generativelanguage.googleapis.com`; `api.github.com` was added while preserving
+that entry and the package-manager preset. The configuration tool confirmed the
+draft save, but saving does not apply runtime changes or publish the environment.
+The user must review/save the relevant environment settings and, when ready,
+publish the environment to activate the reusable draft. No publication or
+production deployment was performed. Recheck GitHub API authentication and PR
+creation after the network change is actually applied.
+
+A subsequent configuration read still reported `has_saved_binding: false` for
+GOOGLE_API_KEY. The outstanding key/runtime configuration and API egress policy
+are external blockers; all accessible offline/UI checks passed. The pushed branch
+comparison link above is for reviewing/creating a PR, not an existing PR URL.

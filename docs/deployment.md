@@ -82,8 +82,11 @@ behind such a proxy also need the host's supported trusted-CA configuration.
 Uploaded documents and chat are session-specific and not durable across restarts.
 Community Cloud resource limits may require smaller files and fewer concurrent
 sessions; this environment has not published a cloud app or load-tested hosting.
-Do not expose confidential documents publicly. Apply authentication and the
-production controls in architecture.md before serving untrusted users.
+Keep the app public in Cloud sharing settings; no application login is added.
+Configure server-only budgets using [public hosting controls](public_cloud_review.md).
+Do not expose confidential documents. The implemented controls reduce some risks;
+review the documented anonymous-abuse, parser sandbox, replicas/restarts and
+resource-exhaustion limitations. See [executed checks](public_cloud_test_report.md).
 
 ## Optional scanned-PDF OCR
 

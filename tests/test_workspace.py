@@ -56,7 +56,6 @@ def test_refreshed_provider_replaces_cached_credentials_without_reindexing(sampl
 
 
 def test_windows_default_uses_memory_without_persistent_files(monkeypatch, sample_pdf):
-    monkeypatch.setattr('src.workspace.sys.platform', 'win32')
     workspace = SessionWorkspace()
     try:
         assert workspace.persistent is False

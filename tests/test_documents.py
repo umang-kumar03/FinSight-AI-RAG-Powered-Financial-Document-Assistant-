@@ -53,10 +53,11 @@ def test_blank_and_page_limit():
     writer.write(buffer)
     with pytest.raises(ValidationError, match='No readable text'):
         extract_pages(buffer.getvalue(), 'blank.pdf')
-    with pytest.raises(ValidationError, match='100 pages'):
+    with pytest.raises(ValidationError, match='page limit'):
         extract_pages(buffer.getvalue(), 'blank.pdf', Settings(max_pdf_pages=0))
     with patch('src.documents.ocr_page', return_value='Scanned revenue is 50'):
-        pages = extract_pages(buffer.getvalue(), 'blank.pdf', ocr=True)
+        from src.documents import _extract_pages
+        pages = _extract_pages(buffer.getvalue(), 'blank.pdf', ocr=True)
         assert pages[0].text == 'Scanned revenue is 50'
 
 

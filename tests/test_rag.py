@@ -127,16 +127,24 @@ def test_embedding_providers():
 
 def test_embedding_adapter_with_mocked_transport(monkeypatch):
     captured = {}
+    tasks = []
     class FakeEmbeddingClient:
-        def __init__(self, **kwargs): captured.update(kwargs)
-        def embed_documents(self, texts): return [[3., 4.] for _ in texts]
-        def embed_query(self, text): return [3., 4.]
-    monkeypatch.setattr('langchain_google_genai.GoogleGenerativeAIEmbeddings', FakeEmbeddingClient)
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+            self.models = self
+        def embed_content(self, *, model, contents, config):
+            tasks.append(config.task_type)
+            assert config.output_dimensionality == 768
+            return SimpleNamespace(embeddings=[SimpleNamespace(values=[3., 4.])])
+        def close(self): pass
+    monkeypatch.setattr('google.genai.Client', FakeEmbeddingClient)
     provider = GeminiEmbeddings(Settings(api_key='unit-test-key'))
     assert provider.embed_documents(['example'])[0] == pytest.approx([.6, .8])
     assert provider.embed_query('example') == pytest.approx([.6, .8])
+    assert tasks == ['RETRIEVAL_DOCUMENT', 'RETRIEVAL_QUERY']
     assert captured['vertexai'] is False
-    assert captured['output_dimensionality'] == 768
+    assert captured['http_options'].retry_options.attempts == 1
+    assert captured['http_options'].timeout == 45000
     with pytest.raises(ServiceError): GeminiEmbeddings._normalize([[0., 0.]])
 
 
@@ -208,3 +216,63 @@ def test_embedding_collections_do_not_mix_documents(tmp_path, sample_pdf):
         assert first.documents()
         assert not second.documents()
         assert not second.search('revenue')
+
+
+def test_answer_token_limit_blocks_network_before_admission(service, isolated_ai_governor):
+    service.settings = Settings(gemini_max_input_tokens=10)
+    calls = []
+    class FakeLLM:
+        def invoke(self, messages):
+            calls.append(messages)
+            return SimpleNamespace(content='Revenue [S1]')
+    with pytest.raises(ServiceError, match='token allowance'):
+        service.answer('revenue', mode='gemini', llm=FakeLLM())
+    assert not calls
+    assert isolated_ai_governor.total.requests == 0
+
+
+def test_answer_reserves_output_and_disables_optional_tracing(service, isolated_ai_governor):
+    from langsmith.run_helpers import get_tracing_context
+    class FakeLLM:
+        def invoke(self, messages):
+            assert get_tracing_context()['enabled'] is False
+            return SimpleNamespace(content='Revenue [S1]')
+    service.answer('revenue', mode='gemini', llm=FakeLLM())
+    assert isolated_ai_governor.total.requests == 1
+    assert isolated_ai_governor.total.tokens > service.settings.gemini_max_output_tokens
+
+
+def test_gemini_embedding_calls_and_answer_share_the_same_budget(service, monkeypatch, isolated_ai_governor):
+    settings = Settings(api_key='unit-test-placeholder', gemini_daily_requests=1)
+    class FakeClient:
+        def __init__(self, **kwargs): self.models = self
+        def embed_content(self, **kwargs):
+            return SimpleNamespace(embeddings=[SimpleNamespace(values=[3., 4.])])
+        def close(self): pass
+    monkeypatch.setattr('google.genai.Client', FakeClient)
+    from contextlib import closing
+    with closing(GeminiEmbeddings(settings)) as provider:
+        assert provider.embed_query('revenue')
+    service.settings = settings
+    class NeverCalled:
+        def invoke(self, messages):
+            pytest.fail('Budget rejection must happen before network invocation')
+    with pytest.raises(ServiceError, match='daily budget'):
+        service.answer('revenue', mode='gemini', llm=NeverCalled())
+    assert isolated_ai_governor.total.requests == 1
+
+
+def test_real_llm_constructor_sets_output_and_sdk_retry_limits(service, monkeypatch):
+    captured = {}
+    class FakeLLM:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+            self.client = SimpleNamespace(close=lambda: captured.update(closed=True))
+        def invoke(self, messages): return SimpleNamespace(content='Revenue [S1]')
+    monkeypatch.setattr('langchain_google_genai.ChatGoogleGenerativeAI', FakeLLM)
+    service.settings = Settings(api_key='unit-test-placeholder', gemini_max_output_tokens=256)
+    service.answer('revenue', mode='gemini')
+    assert captured['max_output_tokens'] == 256
+    assert captured['thinking_budget'] == 0
+    assert captured['max_retries'] == 1
+    assert captured['closed'] is True

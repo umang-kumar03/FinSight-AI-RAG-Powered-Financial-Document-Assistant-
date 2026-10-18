@@ -13,3 +13,5 @@ cvxpy>=1.6,<2
 openpyxl>=3.1,<4
 python-dotenv>=1,<2
 tenacity>=9,<10
+google-genai>=2.31,<3
+langsmith>=0.14,<1

@@ -53,7 +53,9 @@ flowchart TD
 PDFs are parsed from bytes, not saved under client filenames. Names are sanitized
 display metadata; IDs hash filename plus bytes. Pages remain one-based and chunks
 never cross page boundaries. The current limits are 20 MB/file, 100 pages/file,
-20 documents/index, 5,000 chunks/index, and 2 million extracted characters/PDF.
+20 documents/session, 5,000 chunks/session, and 500,000 extracted characters/PDF.
+Selected files also have a 40 MB combined upload bound. PDF parsing/table work runs
+in bounded subprocesses; see the public deployment review for the exact limits.
 LangChain splits into 1,000-character chunks with 150-character overlap.
 
 The local provider hashes word unigrams/bigrams into normalized 768-dimensional
@@ -116,27 +118,21 @@ slippage, walk-forward validation, and trading execution are not modeled.
 
 ## Privacy, reliability, and deployment boundary
 
-The UI owns a per-session workspace. Windows temporary sessions use in-memory
-Chroma collections with unique session namespaces; Linux sessions use an owned
-TemporaryDirectory. Explicit RAGService paths remain persistent. There is no global
-document cache or global collection reset.
-Uploaded PDFs stay in memory; extracted text persists locally for that session.
-Deleting a document deletes its indexed chunks and clears UI chat. “Clear this
-session workspace” deletes all its collections. Temporary storage is neither
-an encrypted vault nor durable cross-restart storage. The session owner closes all cached model-specific clients using Chroma’s public
-`close()` before directory cleanup. Finalization repeats that order. Explicit close retries transient OS locks and
-returns False with a warning on persistent failure, retaining resources for retry. This is best
-effort; an operator still needs a retention policy.
+The UI owns a random-namespaced workspace with in-memory Chroma collections on
+all platforms. All document operations and cleanup share the session's lock.
+There are no globally cached private indexes, financial frames, chat responses or
+portfolio results. Clearing a session resets all its private results and upload
+widgets. Explicit persistent RAGService paths remain supported for offline use.
 
-API timeouts and bounded exponential retry handle selected transient failures;
-errors shown/logged do not include provider payloads or keys. Application logs
-record categories only. Gemini mode sends selected text to Google; offline mode
-does not. Optional OCR caps rendered pixels and has a 20-second Tesseract timeout.
+PDF workers have bounded admission/time and Linux resource limits; Gemini
+embeddings and answers share an atomic process-local quota governor. Quotas
+survive reruns and workspace clearing, but not process replacement or replicas.
+Collections are reaped after idle/lifetime expiry; private UI state resets on the
+next interaction or Streamlit disconnect-state disposal. Download links remain
+bearer links and no guaranteed memory erasure is claimed.
 
-This is a deployable research application, **not a hardened public multi-tenant
-service**. For hostile documents add authentication, per-user quotas, parser
-worker isolation/time/memory limits, malware scanning, encrypted storage and
-retention, audit controls, and organization-specific financial review. A byte/page
-limit does not eliminate parser vulnerabilities or prompt injection. Deployment
-is documented and container-tested where available, but no production deployment
-or security certification is claimed.
+The public app has no login. Read [public deployment controls](public_cloud_review.md)
+for configuration, cleanup details, prompt/billing assumptions, same-user parser
+sandbox limitations, resource/anonymous-abuse risks and unverified boundaries.
+Read [test evidence](public_cloud_test_report.md) for executed validations. This
+is a research demo, not a certified or penetration-tested production service.

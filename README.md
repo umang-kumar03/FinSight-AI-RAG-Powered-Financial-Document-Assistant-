@@ -126,8 +126,8 @@ py -3.11 -m venv .venv
 ```
 
 Activation is unnecessary. Select `.venv` with **Python: Select Interpreter** in
-VS Code. These commands are documented for Windows; automated runs in this
-workspace use Linux. `requirements.txt` is sufficient for the deployed app;
+VS Code. Local runs use Linux; the workspace cleanup fix also passes full hosted
+Windows Python 3.11/3.12 CI (see the Windows fix report). `requirements.txt` is sufficient for the deployed app;
 `requirements-dev.txt` adds the tests and sample-data generator. Bundled samples
 are already included, so generating them again is optional.
 
@@ -252,6 +252,9 @@ docs/                       Architecture, deployment, research, checklist, test 
 Dockerfile                  Python 3.11 image and health check
 .github/workflows/ci.yml     Python 3.11/3.12 tests, reports and Docker smoke check
 ```
+
+See the [Windows workspace cleanup fix and verification commands](docs/windows_cleanup_fix.md)
+for Chroma 1.5.9 session-lock handling and platform test evidence.
 
 ## Documentation and deployment boundary
 

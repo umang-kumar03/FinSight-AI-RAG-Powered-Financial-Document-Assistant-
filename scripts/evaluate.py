@@ -18,7 +18,7 @@ def main():
     output = root / 'docs' / 'examples'
     output.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='finsight-evaluation-') as directory, \
-            RAGService(directory) as service:
+            RAGService(directory, persistent=sys.platform != 'win32') as service:
         for name in ['annual_report.pdf', 'risk_note.pdf']:
             service.ingest((samples / name).read_bytes(), name)
         cases = json.loads((samples / 'retrieval_cases.json').read_text())

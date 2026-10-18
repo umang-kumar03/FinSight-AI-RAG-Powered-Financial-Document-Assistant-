@@ -137,7 +137,7 @@ def library():
             st.rerun()
     if st.button('Clear this session workspace'):
         # Only this session's path is owned here; close every model-specific client first.
-        workspace = st.session_state.pop('workspace', None)
+        workspace = st.session_state.get('workspace')
         removed = workspace.close() if workspace else True
         st.session_state.pop('rag_identity', None)
         st.session_state.pop('rag_service', None)
@@ -145,6 +145,7 @@ def library():
         if not removed:
             st.warning('Session cleared, but some files are locked. Close the app before disk cleanup.')
         else:
+            st.session_state.pop('workspace', None)
             st.rerun()
 
 

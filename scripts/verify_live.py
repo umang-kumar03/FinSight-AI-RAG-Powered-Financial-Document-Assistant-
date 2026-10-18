@@ -44,7 +44,8 @@ def verify(enabled=None):
             raise RuntimeError('Empty response')
         result['connection'] = 'passed'
         with tempfile.TemporaryDirectory(prefix='finsight-live-') as path, \
-                RAGService(path, GeminiEmbeddings(settings), settings) as service:
+                RAGService(path, GeminiEmbeddings(settings), settings,
+                           persistent=sys.platform != 'win32') as service:
             pdf = Path(__file__).resolve().parents[1] / 'data/samples/annual_report.pdf'
             service.ingest(pdf.read_bytes(), pdf.name)
             answer = service.answer('What was revenue in 2025?', mode='gemini', llm=llm)

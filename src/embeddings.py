@@ -22,6 +22,7 @@ def remote_call(operation):
         return operation()
     except Exception as exc:
         transient = False
+        codes = set()
         cause = exc
         # LangChain may wrap a Google SDK error; inspect codes, never its message.
         for _ in range(5):
@@ -29,6 +30,8 @@ def remote_call(operation):
                 break
             name = type(cause).__name__
             code = getattr(cause, 'status_code', getattr(cause, 'code', None))
+            if isinstance(code, int):
+                codes.add(code)
             if name in {'ResourceExhausted', 'ServiceUnavailable', 'DeadlineExceeded',
                         'TooManyRequests', 'TimeoutError', 'ReadTimeout', 'ConnectTimeout'} \
                     or code in {429, 500, 502, 503, 504}:
@@ -37,6 +40,10 @@ def remote_call(operation):
         if transient:
             logger.warning('Remote service temporarily unavailable')
             raise TransientAPIError() from None
+        if 404 in codes:
+            raise ServiceError('Configured Gemini model is unavailable or inaccessible. Check the model name and API access.') from None
+        if codes & {401, 403}:
+            raise ServiceError('Gemini authentication or permission was denied. Check the secure API key and project access.') from None
         raise ServiceError('AI request failed. Check API access, model settings, and quota.') from None
 
 

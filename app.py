@@ -1,8 +1,8 @@
 """FinSight AI: session-isolated document research and financial analysis."""
 from dataclasses import replace
+from hashlib import sha256
 from pathlib import Path
 import logging
-import tempfile
 
 import pandas as pd
 import plotly.express as px
@@ -14,7 +14,7 @@ from src.embeddings import GeminiEmbeddings, LocalEmbeddings
 from src.errors import ServiceError, ValidationError
 from src.finance import clean_financials, csv_report, financial_summary, json_report, read_table
 from src.portfolio import ASSUMPTIONS, efficient_frontier, estimate_moments, optimize, validate_prices
-from src.rag import RAGService
+from src.workspace import SessionWorkspace
 
 ROOT = Path(__file__).resolve().parent
 logging.basicConfig(level=logging.INFO, format='%(levelname)s %(name)s: %(message)s')
@@ -38,14 +38,13 @@ def settings():
 def rag():
     mode = st.session_state.get('embedding_mode', 'Offline lexical')
     configured = settings()
-    identity = (mode, configured.embedding_model)
+    identity = (mode, configured.embedding_model, sha256(configured.api_key.encode()).digest())
     if st.session_state.get('rag_identity') != identity:
         provider = GeminiEmbeddings(configured) if mode == 'Gemini semantic' else LocalEmbeddings()
         # Never use a globally cached index: different browser sessions must not share documents.
         if 'workspace' not in st.session_state:
-            st.session_state.workspace = tempfile.TemporaryDirectory(prefix='finsight-session-')
-        st.session_state.rag_service = RAGService(st.session_state.workspace.name,
-                                                provider, configured)
+            st.session_state.workspace = SessionWorkspace()
+        st.session_state.rag_service = st.session_state.workspace.service(provider, configured)
         st.session_state.rag_identity = identity
         st.session_state.messages = []
     else:
@@ -137,14 +136,16 @@ def library():
             st.session_state.messages = []
             st.rerun()
     if st.button('Clear this session workspace'):
-        service = rag()
-        # Delete collections first; release handles before removing their temporary files.
-        for collection in service.client.list_collections():
-            service.client.delete_collection(collection.name)
+        # Only this session's path is owned here; close every model-specific client first.
+        workspace = st.session_state.pop('workspace', None)
+        removed = workspace.close() if workspace else True
         st.session_state.pop('rag_identity', None)
         st.session_state.pop('rag_service', None)
         st.session_state.messages = []
-        st.success('All indexed text and chat history cleared for this session.')
+        if not removed:
+            st.warning('Session cleared, but some files are locked. Close the app before disk cleanup.')
+        else:
+            st.rerun()
 
 
 def chat():
@@ -158,6 +159,10 @@ def chat():
                'for meaning-based search. Switching embeddings requires re-indexing your documents.')
     selection = st.selectbox('Search scope', ['All documents'] + [d['id'] for d in docs],
                             format_func=lambda v: next((d['name'] for d in docs if d['id'] == v), v))
+    if st.session_state.get('chat_scope') != selection:
+        st.session_state.messages = []
+        st.session_state.chat_scope = selection
+    st.caption('Conversation history resets when the selected document scope changes.')
     history = st.session_state.setdefault('messages', [])
     if st.button('Clear chat history'):
         st.session_state.messages = []
@@ -208,6 +213,10 @@ def financial_analysis():
                                barmode='group', title='Reported financial amounts'), width='stretch')
         st.plotly_chart(px.line(frame, x='period', y=['revenue_growth', 'profit_growth'],
                                 markers=True, title='Period-over-period growth (decimal)'), width='stretch')
+        if 'revenue_yoy_growth' in frame:
+            st.plotly_chart(px.line(frame, x='period', y=['revenue_yoy_growth', 'profit_yoy_growth'],
+                                    markers=True, title='Year-over-year growth (matching reporting dates)'),
+                            width='stretch')
         st.dataframe(frame, hide_index=True)
         st.info(summary['assumptions'])
         st.caption(summary['net_income_method'])

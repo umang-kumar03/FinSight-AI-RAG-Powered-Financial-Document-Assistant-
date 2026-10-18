@@ -28,3 +28,16 @@ htmlcov/
 *.egg-info/
 /test-results*.xml
 /coverage.xml
+venv/
+.secrets/
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+*.db
+.finsight/
+.venv*/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.db-wal
+*.db-shm

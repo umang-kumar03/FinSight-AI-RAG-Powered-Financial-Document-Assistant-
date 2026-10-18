@@ -134,6 +134,15 @@ def dashboard():
 
 def library():
     st.header('Document Library')
+    if st.button('Clear this session workspace'):
+        # Only this session's path is owned here; close every model-specific client first.
+        workspace = st.session_state.get('workspace')
+        removed = workspace.close() if workspace else True
+        if not removed:
+            st.warning('Cleanup could not finish. Session data is retained for a cleanup retry.')
+        else:
+            clear_private_state(st.session_state)
+            st.rerun()
     configured = settings()
     st.caption(f'PDF only · {configured.max_upload_bytes // (1024*1024)} MB/file · '
                f'{configured.max_pdf_pages} pages/file · {configured.max_documents} documents · '
@@ -182,15 +191,6 @@ def library():
         if right.button('Delete', key=f"delete-{doc['id']}"):
             rag().delete_document(doc['id'])
             st.session_state.messages = []
-            st.rerun()
-    if st.button('Clear this session workspace'):
-        # Only this session's path is owned here; close every model-specific client first.
-        workspace = st.session_state.get('workspace')
-        removed = workspace.close() if workspace else True
-        if not removed:
-            st.warning('Cleanup could not finish. Session data is retained for a cleanup retry.')
-        else:
-            clear_private_state(st.session_state)
             st.rerun()
 
 
@@ -359,7 +359,14 @@ def reports():
 def preferences():
     st.header('Settings')
     configured = settings()
-    st.selectbox('Embedding provider', ['Offline lexical', 'Gemini semantic'], key='embedding_mode')
+    providers = ['Offline lexical', 'Gemini semantic']
+    def save_provider():
+        # Widget keys disappear when their page is absent; retain the preference
+        # in a separate non-widget session key across navigation and reruns.
+        st.session_state.embedding_mode = st.session_state['_embedding_widget']
+    st.selectbox('Embedding provider', providers,
+                 index=providers.index(st.session_state.get('embedding_mode', providers[0])),
+                 key='_embedding_widget', on_change=save_provider)
     st.write('Google API key: ' + ('configured' if configured.api_key else 'not configured'))
     st.code(f'Chat model: {configured.chat_model}\nEmbedding model: {configured.embedding_model}')
     st.markdown('Set `GOOGLE_API_KEY` in your local `.env` or Streamlit Community Cloud secrets. '

@@ -147,3 +147,27 @@ def test_cloud_secrets_apply_server_side_budgets(monkeypatch):
         assert configured.gemini_daily_tokens == 1234
     finally:
         app.session_state['workspace'].close()
+
+
+def test_cleanup_is_available_even_when_selected_provider_cannot_start(monkeypatch):
+    from src.config import Settings
+    monkeypatch.setattr('src.config.Settings.from_env', lambda: Settings())
+    monkeypatch.setattr('streamlit.secrets', {})
+    app = AppTest.from_file(APP).run(timeout=45)
+    try:
+        button(app, 'Load sample documents').click().run(timeout=45)
+        old_workspace = app.session_state['workspace']
+        go(app, 'Settings')
+        app.selectbox[0].set_value('Gemini semantic').run(timeout=45)
+        app.sidebar.radio[0].set_value('Document Library').run(timeout=45)
+        assert any('GOOGLE_API_KEY' in error.value for error in app.error)
+        app.run(timeout=45)
+        assert app.session_state['embedding_mode'] == 'Gemini semantic'
+        assert any('GOOGLE_API_KEY' in error.value for error in app.error)
+        button(app, 'Clear this session workspace').click().run(timeout=45)
+        assert not app.exception
+        assert old_workspace._closed
+        assert not old_workspace.services
+        assert 'rag_service' not in app.session_state
+    finally:
+        app.session_state['workspace'].close()

@@ -10,7 +10,7 @@ accuracy of model answers, or a guaranteed spending cap.
 | Area | Finding | Change |
 |---|---|---|
 | Chroma | Existing collections were session-specific, but model switching could multiply storage limits | Random 128-bit workspace namespaces; in-memory collections on every OS; shared session lock and aggregate document/chunk limits; at most two model collections |
-| Session state | Clear removed indexes/chat but retained financial/portfolio results | Clear removes all private result keys, rotates upload widgets and download filenames, and preserves a separate API quota identity |
+| Session state | Clear retained financial/portfolio results; provider widget choice expired across page navigation | Clear removes all private result keys, rotates upload widgets and download filenames, preserves API quota identity/provider preference, and stays reachable if provider startup fails |
 | Cleanup | Finalizer-only cleanup could retain indexes; active operations could race deletion | Idle/lifetime expiry, one background reaper, bounded active-workspace admission, serialized close/index/query, weak ownership callbacks, visible retryable failures |
 | PDFs | Signature checking alone and parsing in the web process | Strict PDF structural parsing, encrypted/active/embedded-payload rejection, text/page/object/decompression bounds, child-process timeout, Linux memory/CPU caps, two process-wide parsing slots |
 | Upload buffers | Multiple uploads could accumulate before indexing | Per-file transport limit plus immediate selected-file count and combined-byte validation; rejected selections rotate out of UI state |

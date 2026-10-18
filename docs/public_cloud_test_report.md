@@ -6,8 +6,8 @@ claim is made.
 
 | Executed check | Result |
 |---|---|
-| Full suite, Python 3.11.17 | 151 passed, 0 failed, 2 skipped; no warnings |
-| Full suite, Python 3.12.14 | 151 passed, 0 failed, 2 skipped; no warnings |
+| Full suite, Python 3.11.17 | 152 passed, 0 failed, 2 skipped; no warnings |
+| Full suite, Python 3.12.14 | 152 passed, 0 failed, 2 skipped; no warnings |
 | Python 3.11 `pip check` | No broken requirements found |
 | Python 3.11 `scripts/evaluate.py` | Generated the offline example reports successfully; no Gemini calls |
 | Python 3.11 Streamlit startup | Started `app.py`; `/` returned HTTP 200 and `/_stcore/health` returned HTTP 200 with `ok` |
@@ -52,6 +52,8 @@ charges or provider behavior was verified in this review.
 - Shared embedding/answer budgets, correct embedding task types and dimensions,
   SDK retry/timeout configuration, output caps, prompt-size rejection before
   invocation, provider error sanitization and disabled private LangSmith tracing.
+- Cleanup remains reachable when the selected provider cannot initialize; embedding
+  preference survives navigation and repeated reruns without losing isolation.
 - Environment and Cloud-secret operator configuration, session quota identity
   surviving clear, complete private-state deletion and independent report state.
 

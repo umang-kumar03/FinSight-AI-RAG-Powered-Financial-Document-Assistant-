@@ -1,0 +1,5 @@
+*.pdf binary
+*.xlsx binary
+*.png binary
+# Generated standalone chart bundles contain vendor JavaScript; review the generator instead.
+docs/examples/*.html -diff linguist-generated=true

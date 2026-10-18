@@ -18,3 +18,13 @@ reports/
 
 # Editor settings
 .vscode/
+
+# Runtime documents and outputs
+chroma_db/
+outputs/
+.streamlit/secrets.toml
+.coverage
+htmlcov/
+*.egg-info/
+/test-results*.xml
+/coverage.xml

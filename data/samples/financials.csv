@@ -1,0 +1,4 @@
+period,revenue,expenses,net_income,assets,liabilities,equity,debt,current_assets,current_liabilities
+2023-12-31,1000,700,300,2000,800,1200,600,700,350
+2024-12-31,1200,800,400,2400,900,1500,650,850,400
+2025-12-31,1500,1000,500,3000,1100,1900,700,1000,500

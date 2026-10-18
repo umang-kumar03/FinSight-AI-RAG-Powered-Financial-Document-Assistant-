@@ -1,0 +1,20 @@
+[
+  {
+    "query": "What was revenue in 2025?",
+    "relevant": [
+      {
+        "source": "annual_report.pdf",
+        "page": 1
+      }
+    ]
+  },
+  {
+    "query": "What liquidity risk does the company face?",
+    "relevant": [
+      {
+        "source": "risk_note.pdf",
+        "page": 1
+      }
+    ]
+  }
+]

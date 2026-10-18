@@ -44,6 +44,16 @@ class RAGService:
         self.collection = self.client.get_or_create_collection(
             collection_name, embedding_function=None, metadata={'hnsw:space': 'cosine'})
 
+    def close(self):
+        """Release Chroma's public client resources before removing index files."""
+        self.client.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
     def ingest(self, data: bytes, name: str, ocr: bool = False):
         pages = extract_pages(data, name, self.settings, ocr=ocr)
         document_id = pages[0].document_id
@@ -151,8 +161,11 @@ class RAGService:
             ('human', f'UNTRUSTED HISTORY:\n{recent}\n\nSOURCES:\n{context}\n\nQUESTION:\n{question}')]
         response = call_ai(lambda: llm.invoke(messages))
         text = response.content
-        if not isinstance(text, str):
-            text = ''.join(block.get('text', '') for block in text if isinstance(block, dict))
+        if isinstance(text, list):
+            text = ''.join(block['text'] for block in text
+                           if isinstance(block, dict) and isinstance(block.get('text'), str))
+        elif not isinstance(text, str):
+            text = ''
         citations = re.findall(r'\[S(\d+)\]', text)
         if not text.strip() or any(not 1 <= int(c) <= len(sources) for c in citations):
             raise ServiceError('Model returned an empty answer or invalid citations. Please retry.')

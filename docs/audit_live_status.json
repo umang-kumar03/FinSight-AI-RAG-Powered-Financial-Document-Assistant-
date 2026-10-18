@@ -1,0 +1,10 @@
+{
+  "key_available": false,
+  "connection": "not_run",
+  "pdf_semantic_rag": "not_run",
+  "model_availability": {
+    "chat": "not_run",
+    "embeddings": "not_run"
+  },
+  "blocker": "GOOGLE_API_KEY is unavailable in the application process."
+}

@@ -1,0 +1,12 @@
+{
+  "runtime_only_dependencies": true,
+  "non_root": true,
+  "http_health": "passed",
+  "html": "passed",
+  "excluded_private_artifacts": "passed",
+  "offline_pdf_rag": "passed",
+  "xlsx_financials_and_yoy": "passed",
+  "both_portfolio_objectives": "passed",
+  "efficient_frontier": "passed",
+  "live_gemini": "not_run"
+}

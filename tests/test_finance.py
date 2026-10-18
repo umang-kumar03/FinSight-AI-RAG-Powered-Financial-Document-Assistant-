@@ -79,3 +79,54 @@ def test_column_normalization():
     assert frame.columns.tolist() == ['revenue', 'expenses']
     with pytest.raises(ValidationError, match='unique'):
         read_table(b'Revenue, revenue\n1,2\n', 'x.csv')
+
+
+@pytest.mark.parametrize('kind', ['csv', 'xlsx'])
+def test_exact_duplicate_headers_rejected(kind):
+    from io import BytesIO
+    if kind == 'csv':
+        data = b'revenue,revenue,expenses\n100,200,50\n'
+    else:
+        buffer = BytesIO()
+        pd.DataFrame([[100, 200, 50]], columns=['revenue', 'revenue', 'expenses']).to_excel(buffer, index=False)
+        data = buffer.getvalue()
+    with pytest.raises(ValidationError, match='unique'):
+        read_table(data, 'duplicate.' + kind)
+
+
+def test_csv_headers_and_control_character_injection():
+    from io import BytesIO
+    frame = pd.DataFrame({'=SUM(A1)': ['\tmalicious', '\rmalicious', '\nmalicious', '+1'],
+                          'numeric': [-2, 1, 2, 3]})
+    decoded = pd.read_csv(BytesIO(csv_report(frame)))
+    assert decoded.columns[0] == "'=SUM(A1)"
+    assert decoded.iloc[:, 0].str.startswith("'").all()
+    assert decoded.numeric.tolist() == [-2, 1, 2, 3]
+
+
+def test_yoy_requires_matching_prior_year_not_adjacent_rows():
+    data = clean_financials(pd.DataFrame({
+        'period': ['2023-03-31', '2023-06-30', '2024-03-31', '2025-06-30'],
+        'revenue': [100, 150, 120, 300], 'expenses': [50, 75, 60, 150]}))
+    assert data.revenue_yoy_growth.iloc[2] == pytest.approx(.2)
+    assert pd.isna(data.revenue_yoy_growth.iloc[3])
+    assert data.revenue_growth.iloc[3] == pytest.approx(1.5)
+
+
+def test_missing_values_rejected():
+    with pytest.raises(ValidationError, match='finite'):
+        clean_financials(pd.DataFrame({'revenue': [100, None], 'expenses': [50, 60]}))
+
+
+def test_aggregate_overflow_is_a_validation_error():
+    data = clean_financials(pd.DataFrame({'revenue': [1e308, 1e308], 'expenses': [0, 0]}))
+    with pytest.raises(ValidationError, match='numeric range'):
+        financial_summary(data)
+
+
+def test_sorting_preserves_uploaded_metadata_and_duplicate_row_index():
+    frame = pd.DataFrame({'period': ['2025', '2024'], 'revenue': [120, 100],
+                           'expenses': [60, 50], '_order': ['latest', 'prior']}, index=[0, 0])
+    data = clean_financials(frame)
+    assert data['_order'].tolist() == ['prior', 'latest']
+    assert data.revenue_yoy_growth.iloc[1] == pytest.approx(.2)

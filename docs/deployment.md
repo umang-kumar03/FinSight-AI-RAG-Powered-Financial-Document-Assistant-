@@ -11,7 +11,7 @@ python -m venv .venv
 # macOS/Linux
 source .venv/bin/activate
 # Windows PowerShell instead: .venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
 python -m pip check
 python scripts/make_sample_data.py
 pytest -q
@@ -117,11 +117,10 @@ so PowerShell activation/execution-policy changes are unnecessary. Run from the
 folder where you want the checkout (do not clone over existing local work):
 
 ```powershell
-git clone --branch feat/complete-finsight-ai https://github.com/umang-kumar03/FinSight-AI-RAG-Powered-Financial-Document-Assistant-.git FinSight-AI
-cd FinSight-AI
+# Run inside the folder containing this audited checkout.
 code .
 py -3.11 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 .\.venv\Scripts\python.exe -m pip check
 .\.venv\Scripts\python.exe -m pytest -q
 if (!(Test-Path .env)) { Copy-Item .env.example .env }
@@ -132,7 +131,7 @@ Enter your key only in that local editor as `GOOGLE_API_KEY=...`, save and close
 The ignored `.env` is local secret storage; never share or commit it. Continue:
 
 ```powershell
-.\.venv\Scripts\python.exe scripts\verify_live.py
+.\.venv\Scripts\python.exe scripts\verify_live.py --live
 $env:RUN_LIVE_GEMINI = "1"
 .\.venv\Scripts\python.exe -m pytest -q -m live
 Remove-Item Env:RUN_LIVE_GEMINI
@@ -143,6 +142,28 @@ Open the address printed by Streamlit in your own local browser. Select the
 `.venv` interpreter in VS Code. In Settings select Gemini semantic, upload/index
 PDFs in Document Library, then choose Gemini answer in PDF Chat Assistant.
 If you already have a clone, use `git fetch origin` and
-`git switch feat/complete-finsight-ai` in its root, preserving local changes.
+`git switch chore/portfolio-audit` (after this local audit branch is approved and pushed) in its root, preserving local changes.
 The project tests were executed on Linux; these Windows commands are provided
 for setup and have not been executed on a Windows machine in this environment.
+
+
+## Audit deployment notes
+
+Use `requirements.txt` for production and `requirements-dev.txt` for development
+and tests. The CI host test job installs development dependencies. The Docker
+image installs runtime dependencies only; no pytest/ReportLab is needed to render
+the application or load the checked-in samples. Deploy only after reviewing the
+local audit commits and explicitly approving publication. No deployment was
+performed during this audit.
+
+The session owner closes every Chroma client through the pinned version's public
+`close()` API before deleting its temporary directory. This fixes the lifecycle
+ordering that can trigger Windows SQLite locks. An external antivirus or another
+process can still retain a handle; cleanup reports that situation without an
+unhandled finalizer exception. This lifecycle was tested on Linux, not Windows.
+
+For an alternative chat model, set `GEMINI_MODEL=gemini-3.8-flash` in `.env` or
+the deployment environment. The name is configurable, not a promise that your
+Google account can access it. `python scripts/verify_live.py --live` explicitly
+opts into model metadata checks and actual API calls. Without `--live` or
+`RUN_LIVE_GEMINI=1`, the checker performs no remote calls even when a key exists.

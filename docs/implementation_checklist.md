@@ -31,3 +31,17 @@ external check is not satisfied by a mock or by configuration alone.
 Implementation checkboxes indicate delivered code and local validation where
 possible; they do not override these external acceptance limits. See the testing
 report for exact passed/skipped counts and the final GitHub delivery outcome.
+
+## Current portfolio audit (local, unpublished)
+
+- [x] Audit the current owner-verified main branch and preserve working modules.
+- [x] Fix session/index lifecycle, scoped history, table validation, exports and solver checks.
+- [x] Verify configurable model names without assuming availability.
+- [x] Run both supported Python suites, actual browser flows and runtime-only Docker checks.
+- [x] Record exact pass/fail/skip/warning counts and remaining limitations.
+- [x] Prepare local commits on chore/portfolio-audit.
+- [ ] Push audit commits (requires explicit user approval).
+- [ ] Live Gemini model/account verification (requires secure key and explicit opt-in).
+- [ ] Deploy (requires explicit user approval).
+
+See [the current audit report](repository_audit.md) for concrete evidence.

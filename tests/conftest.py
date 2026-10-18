@@ -11,3 +11,14 @@ def samples(tmp_path_factory):
 @pytest.fixture
 def sample_pdf(samples):
     return (samples / 'annual_report.pdf').read_bytes()
+
+
+@pytest.fixture(autouse=True)
+def close_test_indexes(monkeypatch, request):
+    # Test-created persistent clients must also release Windows file locks before tmp cleanup.
+    from src.rag import RAGService
+    original = RAGService.__init__
+    def tracked_init(self, *args, **kwargs):
+        original(self, *args, **kwargs)
+        request.addfinalizer(self.close)
+    monkeypatch.setattr(RAGService, '__init__', tracked_init)

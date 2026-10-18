@@ -1,3 +1,6 @@
+> Historical implementation evidence. See [the current repository audit](repository_audit.md)
+> for the latest local code, test results, and deployment boundaries.
+
 # Executed tests and acceptance status
 
 Run date: **2026-10-18**. Repository used with user confirmation:

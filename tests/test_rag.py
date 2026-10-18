@@ -67,7 +67,7 @@ def test_mocked_gemini_receives_context_and_history(service):
     assert answer.sources[0].page == 1
 
 
-@pytest.mark.parametrize('text', ['', 'No citations', 'Revenue [S99]'])
+@pytest.mark.parametrize('text', ['', None, 'No citations', 'Revenue [S99]'])
 def test_model_citations_validated(service, text):
     class FakeLLM:
         def invoke(self, messages): return SimpleNamespace(content=text)
@@ -169,3 +169,42 @@ def test_invalid_mode_and_empty_evaluation_labels(service):
     with pytest.raises(ValidationError): service.answer('revenue', mode='unknown')
     with pytest.raises(ValidationError):
         evaluate_retrieval(service, [{'query': 'revenue', 'relevant': []}])
+
+
+@pytest.mark.parametrize('code,message', [(404, 'model is unavailable'), (403, 'permission was denied')])
+def test_api_model_and_permission_errors_are_actionable(code, message):
+    class APIError(Exception):
+        status_code = code
+    def operation():
+        raise APIError('sensitive-provider-payload')
+    with pytest.raises(ServiceError, match=message) as error:
+        call_ai(operation)
+    assert 'sensitive-provider-payload' not in str(error.value)
+
+
+def test_citation_page_matches_actual_pdf_page(tmp_path):
+    from io import BytesIO
+    from reportlab.pdfgen import canvas
+    data = BytesIO()
+    pdf = canvas.Canvas(data)
+    pdf.drawString(30, 700, '2024 fictional revenue was 800.')
+    pdf.showPage()
+    pdf.drawString(30, 700, '2025 fictional revenue was 1500.')
+    pdf.save()
+    with RAGService(tmp_path / 'pages') as service:
+        service.ingest(data.getvalue(), 'two-pages.pdf')
+        answer = service.answer('2025 revenue 1500')
+        assert answer.sources[0].page == 2
+        assert '1500' in answer.sources[0].text
+        assert answer.sources[0].source == 'two-pages.pdf'
+
+
+def test_embedding_collections_do_not_mix_documents(tmp_path, sample_pdf):
+    class OtherProvider(LocalEmbeddings):
+        identity = 'different-model-identity'
+    with RAGService(tmp_path / 'shared', LocalEmbeddings()) as first, \
+            RAGService(tmp_path / 'shared', OtherProvider()) as second:
+        first.ingest(sample_pdf, 'only-first.pdf')
+        assert first.documents()
+        assert not second.documents()
+        assert not second.search('revenue')

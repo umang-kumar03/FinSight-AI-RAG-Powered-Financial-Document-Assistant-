@@ -70,3 +70,27 @@ def test_missing_gemini_key_is_safe(monkeypatch):
     app.chat_input[0].set_value('revenue?').run(timeout=45)
     assert not app.exception
     assert any('GOOGLE_API_KEY' in e.value for e in app.error)
+
+
+def test_scope_change_clears_previous_document_conversation():
+    app = AppTest.from_file(APP).run(timeout=45)
+    button(app, 'Load sample documents').click().run(timeout=45)
+    go(app, 'PDF Chat Assistant')
+    app.chat_input[0].set_value('revenue 2025').run(timeout=45)
+    assert app.session_state['messages']
+    # AppTest select options are formatted names; use underlying service id.
+    actual_id = app.session_state['rag_service'].documents()[0]['id']
+    app.selectbox[0].set_value(actual_id).run(timeout=45)
+    assert not app.exception and not app.error
+    assert not app.session_state['messages']
+
+
+def test_workspace_clear_releases_index_path():
+    app = AppTest.from_file(APP).run(timeout=45)
+    button(app, 'Load sample documents').click().run(timeout=45)
+    old_path = Path(app.session_state['workspace'].directory.name)
+    go(app, 'Document Library')
+    button(app, 'Clear this session workspace').click().run(timeout=45)
+    assert not app.exception and not app.error
+    assert not old_path.exists()
+    assert not app.session_state['rag_service'].documents()

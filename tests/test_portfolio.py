@@ -80,3 +80,43 @@ def test_singular_covariance():
     prices = pd.DataFrame({'a': np.linspace(100, 110, 30), 'b': np.linspace(100, 110, 30)})
     result = optimize(prices)
     assert np.isfinite(result.annual_volatility)
+
+
+def test_datetime_index_sorted_and_duplicates_rejected(prices):
+    indexed = prices.set_index(pd.DatetimeIndex(prices.date)).drop(columns='date')
+    assert validate_prices(indexed.iloc[::-1]).index.is_monotonic_increasing
+    indexed.index = [indexed.index[0]] * len(indexed)
+    with pytest.raises(ValidationError, match='unique'):
+        validate_prices(indexed)
+
+
+@pytest.mark.parametrize('values', [[0, 0], [float('nan'), 1], [-.1, 1.1], [.4, .4], None])
+def test_invalid_solver_output_rejected(values):
+    from src.errors import ServiceError
+    from src.portfolio import normalized_weights
+    with pytest.raises(ServiceError):
+        normalized_weights(values, 2, 1)
+
+
+def test_solver_fallback_and_infeasible_status():
+    import cvxpy as cp
+    from unittest.mock import Mock
+    from src.errors import ServiceError
+    from src.portfolio import solve
+    problem = Mock(status=cp.OPTIMAL)
+    problem.solve.side_effect = [cp.error.SolverError(), None]
+    solve(problem)
+    assert problem.solve.call_args.kwargs['solver'] == 'SCS'
+    problem.solve.side_effect = cp.error.SolverError()
+    with pytest.raises(ServiceError, match='solver failed'):
+        solve(problem)
+    problem.solve.side_effect = None
+    problem.status = cp.INFEASIBLE
+    with pytest.raises(ValidationError):
+        solve(problem)
+
+
+@pytest.mark.parametrize('kwargs', [{'risk_free_rate': 'bad'}, {'max_weight': True}])
+def test_nonnumeric_parameters_rejected(prices, kwargs):
+    with pytest.raises(ValidationError):
+        optimize(prices, **kwargs)

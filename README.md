@@ -126,8 +126,8 @@ py -3.11 -m venv .venv
 ```
 
 Activation is unnecessary. Select `.venv` with **Python: Select Interpreter** in
-VS Code. These commands are documented for Windows; automated runs in this
-workspace use Linux. `requirements.txt` is sufficient for the deployed app;
+VS Code. Local runs use Linux; the workspace cleanup fix also passes full hosted
+Windows Python 3.11/3.12 CI (see the Windows fix report). `requirements.txt` is sufficient for the deployed app;
 `requirements-dev.txt` adds the tests and sample-data generator. Bundled samples
 are already included, so generating them again is optional.
 

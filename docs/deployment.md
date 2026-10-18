@@ -143,8 +143,9 @@ Open the address printed by Streamlit in your own local browser. Select the
 PDFs in Document Library, then choose Gemini answer in PDF Chat Assistant.
 If you already have a clone, use `git fetch origin` and
 `git switch chore/portfolio-audit` (after this local audit branch is approved and pushed) in its root, preserving local changes.
-The project tests were executed on Linux; these Windows commands are provided
-for setup and have not been executed on a Windows machine in this environment.
+Local project tests ran on Linux. The cleanup fix additionally passed the full
+suite on hosted Windows Python 3.11/3.12 CI; interactive Windows VS Code setup
+was not executed in this container. See windows_cleanup_fix.md for the CI links.
 
 
 ## Audit deployment notes

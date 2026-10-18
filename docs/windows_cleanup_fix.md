@@ -64,10 +64,19 @@ transient OS locks, visible exhausted cleanup, retained failed clients, retrying
 partially completed closure, and rejecting reuse of a closed workspace. A
 platform-selection test on Linux is not a Windows execution result.
 
-Native Windows execution is unavailable in the local container. This PR adds
-`windows-latest` Python 3.11 and 3.12 jobs to CI alongside Linux, with uniquely
-named artifacts. Windows verification is pending those actual jobs; results will
-be recorded after they finish. No existing test assertion was weakened or skipped.
+Native Windows execution is unavailable in the local container, but actual hosted
+Windows verification has now passed on `windows-latest` with **Python 3.11 and
+3.12**. Each job completed dependency checks, the full test suite, offline example
+generation and artifact upload. Linux Python 3.11/3.12 and Docker jobs also passed.
+Both the push and pull-request workflows succeeded for code commit `1380525`.
+
+[Verified PR CI run](https://github.com/umang-kumar03/FinSight-AI-RAG-Powered-Financial-Document-Assistant-/actions/runs/39129281656),
+[verified push CI run](https://github.com/umang-kumar03/FinSight-AI-RAG-Powered-Financial-Document-Assistant-/actions/runs/39129262250),
+and [saved job/step results](windows-cleanup/hosted-ci-results.json).
+Exact hosted pass/skip counts could not be downloaded because the environment
+proxy blocked the artifact host; no counts are inferred from the green jobs.
+The numeric table above reports the actual local runs only. No existing test
+assertion was weakened or skipped. Real Gemini tests remain explicitly opt-in.
 
 ## Exact Windows PowerShell verification
 

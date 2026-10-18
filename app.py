@@ -1,20 +1,22 @@
 """FinSight AI: session-isolated document research and financial analysis."""
-from dataclasses import replace
+from dataclasses import fields, replace
 from hashlib import sha256
 from pathlib import Path
 import logging
+import time
 
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 
 from src.config import Settings
-from src.documents import extract_tables
+from src.documents import extract_tables, validate_upload_batch
 from src.embeddings import GeminiEmbeddings, LocalEmbeddings
 from src.errors import ServiceError, ValidationError
 from src.finance import clean_financials, csv_report, financial_summary, json_report, read_table
 from src.portfolio import ASSUMPTIONS, efficient_frontier, estimate_moments, optimize, validate_prices
 from src.workspace import SessionWorkspace
+from src.session_state import clear_private_state, prepare_session
 
 ROOT = Path(__file__).resolve().parent
 logging.basicConfig(level=logging.INFO, format='%(levelname)s %(name)s: %(message)s')
@@ -32,7 +34,30 @@ def settings():
         secret = st.secrets.get('GOOGLE_API_KEY', '')
     except (FileNotFoundError, st.errors.StreamlitSecretNotFoundError):
         secret = ''
-    return replace(configured, api_key=secret or configured.api_key)
+    overrides = {'api_key': secret or configured.api_key}
+    # Operator-only top-level Cloud secrets; no model/budget settings from browser input.
+    try:
+        for item in fields(Settings):
+            if item.name in {'api_key', 'session_id'}:
+                continue
+            key = {'chat_model': 'GEMINI_MODEL', 'embedding_model': 'GEMINI_EMBEDDING_MODEL'}.get(
+                item.name, item.name.upper())
+            value = st.secrets.get(key)
+            if value is not None:
+                if item.type is int:
+                    if isinstance(value, bool) or not str(value).isdigit():
+                        raise ServiceError(f'{key} must be a nonnegative integer in server settings.')
+                    value = int(value)
+                elif item.type is bool:
+                    if str(value).lower() not in {'true', 'false', '0', '1'}:
+                        raise ServiceError(f'{key} must be true or false in server settings.')
+                    value = str(value).lower() in {'true', '1'}
+                else:
+                    value = str(value)
+                overrides[item.name] = value
+    except (FileNotFoundError, st.errors.StreamlitSecretNotFoundError):
+        pass
+    return replace(configured, **overrides, session_id=st.session_state['_quota_session'])
 
 
 def rag():
@@ -40,16 +65,25 @@ def rag():
     configured = settings()
     identity = (mode, configured.embedding_model, sha256(configured.api_key.encode()).digest())
     if st.session_state.get('rag_identity') != identity:
-        provider = GeminiEmbeddings(configured) if mode == 'Gemini semantic' else LocalEmbeddings()
         # Never use a globally cached index: different browser sessions must not share documents.
         if 'workspace' not in st.session_state:
-            st.session_state.workspace = SessionWorkspace()
+            st.session_state.workspace = SessionWorkspace(settings=configured)
+        provider = GeminiEmbeddings(configured) if mode == 'Gemini semantic' else LocalEmbeddings()
         st.session_state.rag_service = st.session_state.workspace.service(provider, configured)
         st.session_state.rag_identity = identity
         st.session_state.messages = []
     else:
         st.session_state.rag_service.settings = configured
+        if isinstance(st.session_state.rag_service.embeddings, GeminiEmbeddings):
+            st.session_state.rag_service.embeddings.settings = configured
     return st.session_state.rag_service
+
+
+def download(label, data, file_name, **kwargs):
+    # Streamlit download URLs are bearer links, not authenticated endpoints.
+    # Random per-workspace filenames avoid predictable cross-session media IDs.
+    return st.download_button(label, data,
+        file_name=f'{st.session_state.workspace.namespace}-{file_name}', **kwargs)
 
 
 def load_sample_financials():
@@ -60,7 +94,8 @@ def load_sample_financials():
 def load_sample_prices():
     path = ROOT / 'data/samples/prices.csv'
     st.session_state.prices = read_table(path.read_bytes(), path.name)
-    st.session_state.pop('portfolio_result', None)
+    for key in ('portfolio_result', 'frontier', 'portfolio_parameters'):
+        st.session_state.pop(key, None)
 
 
 def show_sources(sources):
@@ -99,8 +134,21 @@ def dashboard():
 
 def library():
     st.header('Document Library')
-    st.caption('PDF only · 20 MB/file · 100 pages/file · 20 documents · 5,000 total chunks')
-    uploaded = st.file_uploader('Upload PDFs', type=['pdf'], accept_multiple_files=True)
+    configured = settings()
+    st.caption(f'PDF only · {configured.max_upload_bytes // (1024*1024)} MB/file · '
+               f'{configured.max_pdf_pages} pages/file · {configured.max_documents} documents · '
+               f'{configured.max_chunks:,} chunks across this session')
+    uploaded = st.file_uploader('Upload PDFs', type=['pdf'], accept_multiple_files=True,
+                                key=f"pdf-upload-{st.session_state['_upload_generation']}")
+    if st.session_state.get('_upload_notice'):
+        st.warning(st.session_state.pop('_upload_notice'))
+    if uploaded:
+        try:
+            validate_upload_batch([file.size for file in uploaded], configured)
+        except ValidationError as exc:
+            st.session_state['_upload_notice'] = str(exc)
+            st.session_state['_upload_generation'] += 1
+            st.rerun()
     ocr = st.checkbox('OCR blank/scanned pages (optional host setup required)')
     if st.button('Index uploaded PDFs', disabled=not uploaded):
         for file in uploaded:
@@ -116,14 +164,14 @@ def library():
         if st.button('Extract tables'):
             with st.spinner('Extracting text tables…'):
                 file = uploaded[selected]
-                tables = extract_tables(file.getvalue(), file.name)
+                tables = extract_tables(file.getvalue(), file.name, configured)
                 if not tables:
                     st.info('No grid-based tables detected; this is not an accounting parser.')
                 for i, table in enumerate(tables):
                     frame = pd.DataFrame(table['rows'])
                     st.caption(f"{table['source']} · page {table['page']}")
                     st.dataframe(frame)
-                    st.download_button('Download table CSV', csv_report(frame),
+                    download('Download table CSV', csv_report(frame),
                                        file_name=f'table-{i+1}.csv', key=f'table-{i}')
     docs = rag().documents()
     if not docs:
@@ -139,13 +187,10 @@ def library():
         # Only this session's path is owned here; close every model-specific client first.
         workspace = st.session_state.get('workspace')
         removed = workspace.close() if workspace else True
-        st.session_state.pop('rag_identity', None)
-        st.session_state.pop('rag_service', None)
-        st.session_state.messages = []
         if not removed:
-            st.warning('Session cleared, but some files are locked. Close the app before disk cleanup.')
+            st.warning('Cleanup could not finish. Session data is retained for a cleanup retry.')
         else:
-            st.session_state.pop('workspace', None)
+            clear_private_state(st.session_state)
             st.rerun()
 
 
@@ -196,7 +241,8 @@ def financial_analysis():
     st.caption('Required: revenue, expenses. Optional: period, net_income, assets, equity, '
                'debt, current_assets, current_liabilities, operating_income, interest_expense. '
                'Use distinct, non-overlapping periods and one currency.')
-    upload = st.file_uploader('Financial statements (CSV/XLSX)', type=['csv', 'xlsx'])
+    upload = st.file_uploader('Financial statements (CSV/XLSX)', type=['csv', 'xlsx'],
+                              key=f"financial-upload-{st.session_state['_upload_generation']}")
     if st.button('Analyze uploaded financials', disabled=upload is None):
         with st.spinner('Validating and calculating ratios…'):
             st.session_state.financials = clean_financials(read_table(upload.getvalue(), upload.name))
@@ -221,19 +267,21 @@ def financial_analysis():
         st.dataframe(frame, hide_index=True)
         st.info(summary['assumptions'])
         st.caption(summary['net_income_method'])
-        st.download_button('Download financial analysis', csv_report(frame), 'financial_analysis.csv')
+        download('Download financial analysis', csv_report(frame), 'financial_analysis.csv')
 
 
 def portfolio():
     st.header('Portfolio Optimizer')
     st.caption('Upload aligned positive adjusted prices: date, asset_a, asset_b, … '
                'At least 10 observations and 2 assets. All prices must use the same currency.')
-    upload = st.file_uploader('Historical prices (CSV/XLSX)', type=['csv', 'xlsx'])
+    upload = st.file_uploader('Historical prices (CSV/XLSX)', type=['csv', 'xlsx'],
+                              key=f"prices-upload-{st.session_state['_upload_generation']}")
     if st.button('Load uploaded prices', disabled=upload is None):
         frame = read_table(upload.getvalue(), upload.name)
         validate_prices(frame)
         st.session_state.prices = frame
-        st.session_state.pop('portfolio_result', None)
+        for key in ('portfolio_result', 'frontier', 'portfolio_parameters'):
+            st.session_state.pop(key, None)
     if st.button('Use sample prices'):
         load_sample_prices()
     frame = st.session_state.get('prices')
@@ -290,20 +338,20 @@ def reports():
     if frame is None and result is None and not st.session_state.get('messages'):
         st.info('Analyze financials, optimize a portfolio, or ask a document question first.')
     if frame is not None:
-        st.download_button('Financial report JSON', json_report(financial_summary(frame)),
+        download('Financial report JSON', json_report(financial_summary(frame)),
                            'financial_summary.json', mime='application/json')
-        st.download_button('Ratios and growth CSV', csv_report(frame), 'financial_analysis.csv')
+        download('Ratios and growth CSV', csv_report(frame), 'financial_analysis.csv')
     if result:
         report = {'assumptions': ASSUMPTIONS, 'parameters': st.session_state.portfolio_parameters,
                   **result}
-        st.download_button('Portfolio report JSON', json_report(report), 'portfolio.json')
-        st.download_button('Efficient frontier CSV', csv_report(st.session_state.frontier), 'frontier.csv')
+        download('Portfolio report JSON', json_report(report), 'portfolio.json')
+        download('Efficient frontier CSV', csv_report(st.session_state.frontier), 'frontier.csv')
         chart = px.line(st.session_state.frontier, x='annual_volatility', y='annual_return',
                         title='In-sample efficient frontier')
-        st.download_button('Interactive frontier chart HTML', chart.to_html(include_plotlyjs=True).encode(),
+        download('Interactive frontier chart HTML', chart.to_html(include_plotlyjs=True).encode(),
                            'frontier.html', mime='text/html')
     if st.session_state.get('messages'):
-        st.download_button('Chat with source excerpts JSON',
+        download('Chat with source excerpts JSON',
                            json_report({'messages': st.session_state.messages}), 'chat.json')
     st.caption('Exports contain your data. Store and share them according to your privacy requirements.')
 
@@ -317,13 +365,19 @@ def preferences():
     st.markdown('Set `GOOGLE_API_KEY` in your local `.env` or Streamlit Community Cloud secrets. '
                 'Never commit it. Offline mode needs no key. Changing embedding mode opens '
                 'a separate collection; re-index PDFs for that mode.')
-    st.info('PDFs are parsed in memory. Extracted text is indexed in a session-specific temporary '
-            'directory. Chat is kept in session memory. Use Document Library to delete indexed data. '
-            'Temporary files are not an encrypted storage service. Refresh/session expiry may '
-            'discard data; no account system or durable cloud storage is configured.')
-    st.warning('Do not expose this app to untrusted public uploads without authentication, '
-               'parser process isolation, upload quotas, and a retention policy. '
-               'Input limits and prompt instructions reduce risk but do not guarantee security.')
+    st.info('Your documents, Chroma collection, chat, financial data and portfolio results belong '
+            'to this browser session. Clear this session workspace to remove all these results. '
+            'Idle indexes expire after the configured retention interval; reconnects can lose data.')
+    st.warning('This public research demo has no login. Avoid confidential or regulated documents. '
+               'Gemini sends selected excerpts/history to Google. In-memory quotas are per process '
+               'and reset on restart; new browser sessions can bypass per-session quotas. '
+               'See README for public deployment limits and remaining risks.')
+    st.caption(f'AI limits: {configured.gemini_requests_per_minute} requests/minute globally, '
+               f'{configured.gemini_session_requests_per_minute}/session; '
+               f'{configured.gemini_concurrency} concurrent; '
+               f'{configured.gemini_daily_requests} requests and '
+               f'{configured.gemini_daily_tokens:,} reserved token units/day (UTC).')
+
 
 
 PAGES = {'Dashboard': dashboard, 'PDF Chat Assistant': chat, 'Document Library': library,
@@ -332,6 +386,10 @@ PAGES = {'Dashboard': dashboard, 'PDF Chat Assistant': chat, 'Document Library':
 page = st.sidebar.radio('Workspace', list(PAGES))
 st.sidebar.caption('For learning and research. Not financial advice.')
 try:
+    prepare_session(st.session_state)
+    if 'workspace' not in st.session_state:
+        st.session_state.workspace = SessionWorkspace(settings=settings())
+    st.session_state.workspace.touched = time.monotonic()
     PAGES[page]()
 except (ValidationError, ServiceError) as exc:
     st.error(str(exc))

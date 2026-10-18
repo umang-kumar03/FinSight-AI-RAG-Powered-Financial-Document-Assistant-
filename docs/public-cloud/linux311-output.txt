@@ -1,0 +1,7 @@
+.........................................ss............................. [ 47%]
+........................................................................ [ 94%]
+.........                                                                [100%]
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_live_gemini.py:14: Real Gemini credentials and RUN_LIVE_GEMINI=1 required
+SKIPPED [1] tests/test_live_gemini.py:27: Real Gemini credentials and RUN_LIVE_GEMINI=1 required
+151 passed, 2 skipped in 26.87s

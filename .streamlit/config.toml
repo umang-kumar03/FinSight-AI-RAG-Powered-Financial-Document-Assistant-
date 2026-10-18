@@ -1,6 +1,9 @@
 [server]
 headless = true
 maxUploadSize = 20
+enableCORS = true
+enableXsrfProtection = true
+disconnectedSessionTTL = 120
 
 [browser]
 gatherUsageStats = false

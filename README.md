@@ -64,8 +64,16 @@ in the Docker image. Offline excerpts and local calculations do not use an API k
    GOOGLE_API_KEY = "your-google-api-key"
    ```
 
-4. Deploy the app. Community Cloud installs `requirements.txt` automatically.
-   Keep the key in the app's secret settings, not in the repository.
+4. Configure the server-side quotas in [public deployment controls](docs/public_cloud_review.md).
+   For an offline-only public demo set `GEMINI_ENABLED = false`; no key is needed.
+5. When ready, deploy. Community Cloud installs the locked-compatible runtime
+   `requirements.txt`; keep Python **3.11** selected in Advanced settings
+   (`.python-version` also records it). Development/OCR packages are optional.
+6. In the app's sharing settings, choose **This app is public** to keep access
+   open without login. Do not require a sign-in gate in the application.
+7. Verify a small synthetic PDF, sample financials and portfolio, two independent
+   browser sessions, cleanup and quota rejection on the actual host. This change
+   does not deploy or claim that Community Cloud itself has been tested.
 
 ## Architecture
 
@@ -176,7 +184,8 @@ Offline excerpts are retrieval results, not Gemini-generated answers.
 | Settings | Choose embedding provider and inspect credential presence, models, storage and privacy notes |
 
 Uploads are bounded to 20 MB per file. PDFs are limited to 100 pages,
-20 documents and 5,000 chunks per selected index. PDF text and index data are
+20 documents and 5,000 chunks across the session's model-specific indexes.
+Selected PDFs are capped at 40 MB combined; extracted text at 500,000 characters/PDF. PDF text and index data are
 session-specific; there is no account system or durable cloud document storage.
 Optional OCR requires `requirements-ocr.txt` and Tesseract on the host. Raw table
 extraction does not automatically map arbitrary statements into financial schemas.
@@ -265,9 +274,15 @@ for Chroma 1.5.9 session-lock handling and platform test evidence.
 - [Current repository audit, test evidence, and readiness](docs/repository_audit.md)
 - [Historical test evidence and limitations](docs/testing_report.md)
 
-This repository prepares a deployable research app, not a certified production
-financial service. Public untrusted uploads require authentication, isolated
-parser workers, quotas, encrypted storage/retention and security review. Prompt
+This repository prepares a publicly accessible research demo without login,
+not a certified production financial service. It now has isolated session state,
+bounded PDF workers, retention cleanup and process-local Gemini quotas.
+See [public deployment controls, configuration and remaining risks](docs/public_cloud_review.md)
+and [actual test evidence](docs/public_cloud_test_report.md) before hosting it.
+In-memory limits reset on restart and are independent across replicas; new
+browser sessions bypass per-session identity limits. No hard monetary spending
+cap, hostile-traffic availability, OS tenant sandbox or confidential-data storage
+is guaranteed. Prompt
 instructions and citation-label validation do not guarantee factual correctness.
 No production deployment, cloud publish, merge, model accuracy or investment
 performance is claimed. No upstream project source was copied; research links

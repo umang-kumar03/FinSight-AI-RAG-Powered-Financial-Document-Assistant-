@@ -14,3 +14,20 @@ def test_requested_gemini_model_is_environment_configurable(monkeypatch):
     config = Settings.from_env()
     assert config.chat_model == 'gemini-3.8-flash'
     assert config.embedding_model == 'models/custom-embedding'
+
+
+def test_budget_configuration_from_environment(monkeypatch):
+    monkeypatch.setenv('GEMINI_ENABLED', 'false')
+    monkeypatch.setenv('GEMINI_DAILY_TOKENS', '1000')
+    monkeypatch.setenv('GEMINI_CONCURRENCY', '1')
+    config = Settings.from_env()
+    assert config.gemini_enabled is False
+    assert config.gemini_daily_tokens == 1000
+    assert config.gemini_concurrency == 1
+
+
+def test_invalid_budget_configuration_fails_closed(monkeypatch):
+    import pytest
+    monkeypatch.setenv('GEMINI_DAILY_TOKENS', '-1')
+    with pytest.raises(ValueError, match='nonnegative'):
+        Settings.from_env()

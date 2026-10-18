@@ -22,3 +22,12 @@ def close_test_indexes(monkeypatch, request):
         original(self, *args, **kwargs)
         request.addfinalizer(self.close)
     monkeypatch.setattr(RAGService, '__init__', tracked_init)
+
+
+@pytest.fixture(autouse=True)
+def isolated_ai_governor(monkeypatch):
+    # Each test gets a fresh production governor; assertions still exercise real admission.
+    from src.quotas import QuotaGovernor
+    governor = QuotaGovernor()
+    monkeypatch.setattr('src.embeddings.GOVERNOR', governor)
+    return governor

@@ -94,3 +94,56 @@ def test_workspace_clear_releases_index_path():
     assert not app.exception and not app.error
     assert not old_path.exists()
     assert not app.session_state['rag_service'].documents()
+
+
+def test_two_browser_sessions_isolate_all_private_results_and_clear():
+    first = AppTest.from_file(APP).run(timeout=45)
+    second = AppTest.from_file(APP).run(timeout=45)
+    try:
+        assert first.session_state['_quota_session'] != second.session_state['_quota_session']
+        button(first, 'Load sample documents').click().run(timeout=45)
+        go(first, 'PDF Chat Assistant')
+        first.chat_input[0].set_value('revenue 2025').run(timeout=45)
+        go(first, 'Financial Analysis')
+        button(first, 'Use sample financials').click().run(timeout=45)
+        go(first, 'Portfolio Optimizer')
+        button(first, 'Use sample prices').click().run(timeout=45)
+        button(first, 'Optimize portfolio').click().run(timeout=45)
+        assert not first.error and not first.exception
+        assert first.session_state['financials'] is not None
+        assert first.session_state['portfolio_result']
+        go(second, 'Charts and Reports')
+        assert not second.get('download_button')
+        assert not second.session_state['rag_service'].documents()
+        second.session_state['messages'] = [{'role': 'user', 'content': 'other private chat'}]
+        quota_id = first.session_state['_quota_session']
+        generation = first.session_state['_upload_generation']
+        go(first, 'Document Library')
+        button(first, 'Clear this session workspace').click().run(timeout=45)
+        assert not first.error and not first.exception
+        assert first.session_state['_quota_session'] == quota_id
+        assert first.session_state['_upload_generation'] == generation + 1
+        for key in ('financials', 'prices', 'portfolio_result', 'frontier', 'portfolio_parameters'):
+            assert key not in first.session_state
+        go(first, 'Charts and Reports')
+        assert not first.get('download_button')
+        assert second.session_state['messages'][0]['content'] == 'other private chat'
+    finally:
+        first.session_state['workspace'].close()
+        second.session_state['workspace'].close()
+
+
+def test_cloud_secrets_apply_server_side_budgets(monkeypatch):
+    monkeypatch.setattr('streamlit.secrets', {'GEMINI_ENABLED': False,
+                                            'GEMINI_DAILY_TOKENS': 1234,
+                                            'GEMINI_MODEL': 'operator-model'})
+    app = AppTest.from_file(APP).run(timeout=45)
+    try:
+        go(app, 'Settings')
+        assert 'operator-model' in app.code[0].value
+        assert any('1,234' in caption.value for caption in app.caption)
+        configured = app.session_state['workspace'].settings
+        assert configured.gemini_enabled is False
+        assert configured.gemini_daily_tokens == 1234
+    finally:
+        app.session_state['workspace'].close()

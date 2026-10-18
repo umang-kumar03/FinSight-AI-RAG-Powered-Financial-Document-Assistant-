@@ -1,0 +1,33 @@
+{
+  "pages": [
+    {
+      "page": "Dashboard",
+      "passed": true
+    },
+    {
+      "page": "PDF Chat Assistant",
+      "passed": true
+    },
+    {
+      "page": "Document Library",
+      "passed": true
+    },
+    {
+      "page": "Financial Analysis",
+      "passed": true
+    },
+    {
+      "page": "Portfolio Optimizer",
+      "passed": true
+    },
+    {
+      "page": "Charts and Reports",
+      "passed": true
+    },
+    {
+      "page": "Settings",
+      "passed": true
+    }
+  ],
+  "status": "passed"
+}

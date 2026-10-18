@@ -1,0 +1,4 @@
+-c requirements-lock.txt
+# Also install the host executable tesseract-ocr. OCR is opt-in.
+pytesseract>=0.3.13,<0.4
+pypdfium2>=4.30,<6

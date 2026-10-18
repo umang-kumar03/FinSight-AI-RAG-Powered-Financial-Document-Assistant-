@@ -1,0 +1,27 @@
+{
+  "assumptions": "Historical arithmetic mean returns and sample covariance, annualized using the selected observations per year. Long-only, fully invested, static weights; no leverage, taxes, transaction costs, slippage, or rebalancing simulation. Use aligned adjusted prices in a common currency. Covariance eigenvalues are floored at 1e-10 for stability. Estimates are in-sample, not forecasts or guaranteed performance. Educational use only; not financial advice.",
+  "min_variance": {
+    "method": "min_variance",
+    "weights": {
+      "alpha": 0.22000834014121592,
+      "beta": 0.07038298049106372,
+      "gamma": 0.7096086793677203
+    },
+    "annual_return": 0.06485874053483713,
+    "annual_volatility": 0.09941686217075557,
+    "sharpe": 0.652391748428326,
+    "solver_status": "optimal"
+  },
+  "max_sharpe": {
+    "method": "max_sharpe",
+    "weights": {
+      "alpha": 0.94464836592951,
+      "beta": 0.05535163401255905,
+      "gamma": 5.7931014862769727e-11
+    },
+    "annual_return": 0.14103112399260412,
+    "annual_volatility": 0.12186202862539733,
+    "sharpe": 1.1573016269582415,
+    "solver_status": "optimal"
+  }
+}

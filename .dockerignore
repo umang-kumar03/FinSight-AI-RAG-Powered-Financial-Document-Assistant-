@@ -1,0 +1,15 @@
+.git
+.env
+.env.*
+venv/
+.venv/
+chroma_db/
+outputs/
+__pycache__/
+.pytest_cache/
+.streamlit/secrets.toml
+.coverage
+htmlcov/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
